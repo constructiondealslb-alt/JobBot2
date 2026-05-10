@@ -1,18 +1,30 @@
 name: Daily LinkedIn Job Search
 
 # ─── TRIGGERS ─────────────────────────────────────────────────────────────────
+# Cron format: minute hour day-of-month month day-of-week  (UTC time)
+#
+# Current schedule: every day at 05:00 UTC = 08:00 Beirut (UTC+3)
+#
+# To change recurrence, edit the cron line below. Examples:
+#   '0 5 * * *'       → every day at 8am Beirut          (current)
+#   '0 5 */2 * *'     → every 2 days at 8am Beirut
+#   '0 5 */3 * *'     → every 3 days at 8am Beirut
+#   '0 5 * * 1'       → every Monday at 8am Beirut
+#   '0 5 * * 1,4'     → every Monday and Thursday at 8am Beirut
+#   '0 5 * * 0'       → every Sunday at 8am Beirut
+#   '0 5,17 * * *'    → twice daily, 8am and 8pm Beirut
 on:
   schedule:
-    - cron: '0 5 * * *'    # 05:00 UTC = 08:00 Beirut (UTC+3) every day
-  workflow_dispatch:         # Manual trigger from GitHub Actions UI (for testing)
+    - cron: '0 5 * * *'    # ← edit this line to change recurrence
+  workflow_dispatch:         # Manual trigger from GitHub Actions UI
 
 # ─── JOB ──────────────────────────────────────────────────────────────────────
 jobs:
   job-search:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # silences Node 20 deprecation warning
 
     steps:
       - name: Checkout repository (latest including state.json)
@@ -33,4 +45,6 @@ jobs:
           GEMINI_API_KEY:      ${{ secrets.GEMINI_API_KEY }}
           TELEGRAM_BOT_TOKEN:  ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID:    ${{ secrets.TELEGRAM_CHAT_ID }}
+          ADZUNA_APP_ID:       ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY:      ${{ secrets.ADZUNA_APP_KEY }}
         run: python job_search.py
