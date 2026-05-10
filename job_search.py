@@ -37,7 +37,7 @@ TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 # ──────────────────────────────────────────────────────────────────────────────
 
 BEIRUT_TZ  = timezone(timedelta(hours=3))
-MODEL      = "gemini-2.0-flash"
+MODEL      = "gemini-2.5-flash"
 TELE_URL   = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 TELE_LIMIT = 4096
 STATE_FILE = "state.json"
