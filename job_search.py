@@ -225,12 +225,12 @@ EXCLUSIONS:
 - Duplicates (same title + company = one entry)
 - Any job with no valid LinkedIn URL found in search results
 
-LINKEDIN URL RULES (CRITICAL):
-- ONLY include jobs with URLs actually found in Google Search results
-- Format must be: https://www.linkedin.com/jobs/view/[NUMERIC_ID]/
-- Job ID must be 8+ digits
-- NEVER generate, fabricate, or guess any URL
-- No valid URL found = exclude the job entirely
+LINKEDIN URL RULES:
+- Search for and include the best available LinkedIn job URL
+- Preferred format: https://www.linkedin.com/jobs/view/[JOB_ID]/
+- Include your best available URL even if not 100% certain
+- If truly no URL found, set "link": "" — do NOT exclude the job for missing URL
+- Do not fabricate numeric job IDs you did not find in search results
 
 SUITABILITY: 85-100% excellent | 70-84% good | 55-69% partial | below 55% exclude
 
@@ -364,6 +364,14 @@ def search_region(client: genai.Client, region: dict, cv_texts: dict) -> list[di
         log.warning(f"[{region_name}] Grounding metadata unavailable: {e}")
 
     raw_text = (response.text or "").strip()
+    log.info(f"[{region_name}] Raw response preview: {raw_text[:400]}")
+    # Log search queries used by grounding (if any)
+    try:
+        wq = response.candidates[0].grounding_metadata.web_search_queries
+        if wq:
+            log.info(f"[{region_name}] Google queries used: {wq}")
+    except Exception:
+        pass
     if not raw_text:
         log.error(f"[{region_name}] Empty Gemini response")
         return []
