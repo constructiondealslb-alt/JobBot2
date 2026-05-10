@@ -318,13 +318,13 @@ def search_region(client: genai.Client, region: dict) -> list[dict]:
         log.error(f"[{region_name}] Empty Gemini response")
         return []
 
-    # ── Parse + validate ──
-    jobs      = parse_jobs_json(raw_text, region_name)
+   # ── Parse + normalize + validate ──
+    raw_jobs  = parse_jobs_json(raw_text, region_name)
+    jobs      = [normalize_job(j) for j in raw_jobs if isinstance(j, dict)]
     validated = []
 
     for job in jobs:
-        url = job.get("link", "")
-        has_url, canonical = validate_and_normalize_url(url)
+        has_url, canonical = validate_and_normalize_url(job["link"])
         job["link"] = canonical if has_url else ""
         validated.append(job)
 
@@ -332,6 +332,39 @@ def search_region(client: genai.Client, region: dict) -> list[dict]:
              f"{sum(1 for j in validated if j['link'])} with links")
     return validated
 # ─── HERE END: GEMINI SEARCH ──────────────────────────────────────────────────
+
+# ─── HERE START: JOB NORMALIZATION ────────────────────────────────────────────
+def _to_int(val, default: int = 0) -> int:
+    """Safely convert to int. Returns default if conversion fails."""
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+def _to_str(val, default: str = "") -> str:
+    """Safely convert to str. Returns default for None/dict/list."""
+    if val is None or isinstance(val, (dict, list)):
+        return default
+    return str(val)
+
+def normalize_job(job: dict) -> dict:
+    """
+    Coerce all job fields to expected types.
+    Defensive against Gemini returning unexpected shapes (dict instead of int, etc).
+    """
+    return {
+        "country":          _to_str(job.get("country"), ""),
+        "title":            _to_str(job.get("title"), "Unknown Role"),
+        "company":          _to_str(job.get("company"), "Unknown Company"),
+        "suitability":      _to_int(job.get("suitability"), 0),
+        "gap":              _to_str(job.get("gap"), "None"),
+        "expat_friendly":   _to_str(job.get("expat_friendly"), "Unknown"),
+        "visa_sponsorship": _to_str(job.get("visa_sponsorship"), "Unknown"),
+        "posted":           _to_str(job.get("posted"), ""),
+        "link":             _to_str(job.get("link"), ""),
+        "priority":         _to_str(job.get("priority"), "SECONDARY"),
+    }
+# ─── HERE END: JOB NORMALIZATION ──────────────────────────────────────────────
 
 
 # ─── HERE START: TELEGRAM FORMATTING ─────────────────────────────────────────
