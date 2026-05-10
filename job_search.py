@@ -247,10 +247,13 @@ def parse_jobs_json(raw: str, region_name: str) -> list[dict]:
     # Strip markdown fences
     text = re.sub(r"```(?:json)?\s*", "", raw).strip()
 
-    # ── FIX: Remove invalid control characters before parsing ──
-    # Keeps \n \r \t (structural) but removes all other control chars
-    # that cause "Invalid control character" JSON errors
-    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+    # ── FIX 1: Remove ALL control characters including tab ──
+    # Tab \x09 inside string values causes "Invalid control character" errors
+    text = re.sub(r"[\x00-\x1f\x7f]", " ", text)
+
+    # ── FIX 2: Remove trailing commas before } or ] ──
+    # Gemini often adds trailing comma after last field: "priority": "HIGH",}
+    text = re.sub(r",(\s*[}\]])", r"\1", text)
 
     # Extract outermost JSON object
     start, end = text.find("{"), text.rfind("}")
