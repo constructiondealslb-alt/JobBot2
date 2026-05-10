@@ -19,6 +19,7 @@ from datetime import datetime, timezone, timedelta
 from google import genai
 from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
 import requests
+from json_repair import repair_json
 
 # ── API KEYS ──────────────────────────────────────────────────────────────────
 # Gemini API Key:
@@ -234,26 +235,15 @@ def validate_and_normalize_url(url: str) -> tuple[bool, str]:
 # ─── HERE START: JSON PARSING ─────────────────────────────────────────────────
 def parse_jobs_json(raw: str, region_name: str) -> list[dict]:
     """
-    Parse Gemini JSON response into list of job dicts.
+    Parse Gemini JSON response using json-repair to handle malformed output.
     Input : raw response text, region name for logging
     Output: list of job dicts (empty list on any failure)
 
-    Flow:
-    1. Strip markdown fences
-    2. Remove invalid control characters (cause JSON parse failures)
-    3. Extract outermost { } block
-    4. Parse and return jobs array
+    json-repair handles: unescaped quotes inside strings, trailing commas,
+    missing commas, smart quotes, truncated JSON, control characters.
     """
     # Strip markdown fences
     text = re.sub(r"```(?:json)?\s*", "", raw).strip()
-
-    # ── FIX 1: Remove ALL control characters including tab ──
-    # Tab \x09 inside string values causes "Invalid control character" errors
-    text = re.sub(r"[\x00-\x1f\x7f]", " ", text)
-
-    # ── FIX 2: Remove trailing commas before } or ] ──
-    # Gemini often adds trailing comma after last field: "priority": "HIGH",}
-    text = re.sub(r",(\s*[}\]])", r"\1", text)
 
     # Extract outermost JSON object
     start, end = text.find("{"), text.rfind("}")
@@ -261,11 +251,15 @@ def parse_jobs_json(raw: str, region_name: str) -> list[dict]:
         log.error(f"[{region_name}] No JSON object found in response")
         return []
 
+    candidate = text[start:end + 1]
+
     try:
-        data = json.loads(text[start:end + 1])
-    except json.JSONDecodeError as e:
-        log.error(f"[{region_name}] JSON parse failed: {e}")
-        log.debug(f"[{region_name}] JSON preview: {text[start:start+200]}")
+        # repair_json fixes malformed JSON, then standard json.loads parses it
+        repaired = repair_json(candidate)
+        data = json.loads(repaired)
+    except Exception as e:
+        log.error(f"[{region_name}] JSON repair/parse failed: {e}")
+        log.debug(f"[{region_name}] Candidate preview: {candidate[:200]}")
         return []
 
     jobs = data.get("jobs", [])
