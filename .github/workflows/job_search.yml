@@ -10,9 +10,9 @@ on:
 jobs:
   job-search:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    timeout-minutes: 20      # Kill if stuck — normal run takes ~5 min
 
     steps:
       - name: Checkout repository (latest including state.json)
